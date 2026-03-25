@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "name": "YouTube Subtitle Downloader",
+  "version": "0.1.0",
+  "description": "Download subtitles from YouTube videos directly in your browser.",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "webRequest",
+    "*://*.youtube.com/*"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png"
+    },
+    "default_title": "YouTube Subtitle Downloader"
+  }
+}

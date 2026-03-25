@@ -1,0 +1,17 @@
+{
+  "name": "firefox-youtube-subtitle-downloader",
+  "version": "0.1.0",
+  "description": "A Firefox extension to download subtitles from YouTube videos",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/firefox-webext-browser": "^120.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}
