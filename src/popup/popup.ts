@@ -17,9 +17,15 @@ async function init(): Promise<void> {
   statusEl.textContent = 'Detecting subtitle tracks...';
 
   const request: Message = { type: 'GET_VIDEO_INFO' };
-  const response = await browser.tabs.sendMessage(activeTab.id, request) as Message;
+  let response: Message;
+  try {
+    response = await browser.tabs.sendMessage(activeTab.id, request) as Message;
+  } catch {
+    statusEl.textContent = 'Could not connect to the page. Try refreshing.';
+    return;
+  }
 
-  if (response.type !== 'VIDEO_INFO_RESPONSE' || !response.payload) {
+  if (response?.type !== 'VIDEO_INFO_RESPONSE' || !response.payload) {
     statusEl.textContent = 'No subtitle tracks found for this video.';
     return;
   }
@@ -69,14 +75,18 @@ async function downloadTrack(track: SubtitleTrack): Promise<void> {
     type: 'DOWNLOAD_SUBTITLE',
     payload: { baseUrl: track.baseUrl, languageCode: track.languageCode, format },
   };
-  const response = await browser.tabs.sendMessage(activeTab.id, request) as Message;
+  let response: Message;
+  try {
+    response = await browser.tabs.sendMessage(activeTab.id, request) as Message;
+  } catch {
+    statusEl.textContent = 'Could not connect to the page. Try refreshing.';
+    return;
+  }
 
-  if (response.type === 'DOWNLOAD_RESULT') {
-    if (response.payload.success) {
-      statusEl.textContent = 'Download started.';
-    } else {
-      statusEl.textContent = `Error: ${response.payload.error}`;
-    }
+  if (response?.type === 'DOWNLOAD_RESULT') {
+    statusEl.textContent = response.payload.success
+      ? 'Download started.'
+      : `Error: ${response.payload.error}`;
   }
 }
 
