@@ -3,6 +3,16 @@ import { COLOR_LINK, COLOR_MUTED, COLOR_ERROR, ERROR_DISPLAY_DURATION_MS } from 
 import { downloadSubtitle } from './downloader';
 
 const CONTAINER_ID = 'yt-subtitle-downloader';
+const STYLE_ID = 'yt-subtitle-downloader-styles';
+const LINK_CLASS = 'yt-subtitle-link';
+
+function ensureStyles(): void {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `.${LINK_CLASS}:hover { text-decoration: underline; }`;
+  document.head.appendChild(style);
+}
 
 const CONTAINER_STYLE =
   'padding:8px 0;margin:4px 0;font-size:13px;line-height:1.6;' +
@@ -29,9 +39,7 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
   link.textContent = trackDisplayName(track);
   link.href = '#';
   link.style.cssText = LINK_STYLE;
-
-  link.addEventListener('mouseenter', () => { link.style.textDecoration = 'underline'; });
-  link.addEventListener('mouseleave', () => { link.style.textDecoration = 'none'; });
+  link.className = LINK_CLASS;
 
   link.addEventListener('click', (e) => {
     e.preventDefault();
@@ -58,6 +66,7 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
 }
 
 export function renderInPageUI(tracks: SubtitleTrack[]): void {
+  ensureStyles();
   document.getElementById(CONTAINER_ID)?.remove();
 
   const insertPoint = findInsertionPoint();

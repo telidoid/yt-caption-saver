@@ -41,12 +41,10 @@ function saveTextAsFile(text: string, fileName: string): void {
   link.download = fileName;
   link.href = href;
   link.style.display = 'none';
-  link.addEventListener('click', () => {
-    setTimeout(() => {
-      URL.revokeObjectURL(href);
-      link.remove();
-    }, BLOB_CLEANUP_DELAY_MS);
-  });
   document.body.appendChild(link);
   link.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(href);
+    link.remove();
+  }, BLOB_CLEANUP_DELAY_MS);
 }

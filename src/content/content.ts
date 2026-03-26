@@ -34,7 +34,7 @@ async function checkAndRenderUI(): Promise<void> {
   renderInPageUI(tracks);
 }
 
-setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);
+const _uiPollInterval = setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);
 
 window.addEventListener('yt-navigate-finish', () => {
   lastVideoId = null;

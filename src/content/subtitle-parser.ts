@@ -8,13 +8,19 @@ interface RawCaptionTrack {
   name?: { simpleText?: string };
 }
 
+const CAPTION_TRACKS_REGEX = /\{"captionTracks":(\[.*?\]),/;
+let fetchAbortController: AbortController | null = null;
+
 export async function fetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> {
   // Fetch fresh page HTML to get current captionTracks data.
   // Parsing DOM script tags doesn't work after SPA navigation because YouTube
   // doesn't recreate <script> tags containing ytInitialPlayerResponse.
+  fetchAbortController?.abort();
+  fetchAbortController = new AbortController();
+
   const url = YOUTUBE_WATCH_URL + videoId;
-  const html = await fetch(url).then((r) => r.text());
-  const match = /\{"captionTracks":(\[.*?\]),/.exec(html);
+  const html = await fetch(url, { signal: fetchAbortController.signal }).then((r) => r.text());
+  const match = CAPTION_TRACKS_REGEX.exec(html);
   if (!match) return [];
 
   let raw: RawCaptionTrack[];
