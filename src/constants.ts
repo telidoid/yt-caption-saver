@@ -3,6 +3,7 @@ export const YOUTUBE_WATCH_URL = 'https://www.youtube.com/watch?v=';
 export const YOUTUBE_TIMEDTEXT_PATTERN = 'https://www.youtube.com/api/timedtext?*';
 export const YOUTUBE_WATCH_PATH = 'youtube.com/watch';
 export const YOUTUBE_TITLE_SUFFIX = / - YouTube$/i;
+export const YOUTUBE_ALLOWED_ORIGINS = ['https://www.youtube.com', 'https://youtube.com'];
 
 // Timing (ms)
 export const UI_POLL_INTERVAL_MS = 500;

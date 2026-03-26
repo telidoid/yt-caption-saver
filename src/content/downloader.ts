@@ -2,10 +2,9 @@ import type { Message } from '../types/messages';
 import {
   YOUTUBE_TITLE_SUFFIX, UNSAFE_FILENAME_CHARS, BLOB_CLEANUP_DELAY_MS,
   POT_POLL_INTERVAL_MS, POT_POLL_TIMEOUT_MS, WINDOWS_RESERVED_NAMES, MAX_FILENAME_LENGTH,
+  YOUTUBE_ALLOWED_ORIGINS,
 } from '../constants';
 import { xmlToSrt, xmlToTxt } from './converter';
-
-const ALLOWED_ORIGINS = ['https://www.youtube.com', 'https://youtube.com'];
 
 export async function downloadSubtitle(
   baseUrl: string,
@@ -18,7 +17,7 @@ export async function downloadSubtitle(
   } catch {
     throw new Error('Invalid subtitle URL');
   }
-  if (!ALLOWED_ORIGINS.includes(parsedUrl.origin)) {
+  if (!YOUTUBE_ALLOWED_ORIGINS.includes(parsedUrl.origin)) {
     throw new Error('Subtitle URL is not from YouTube');
   }
 
@@ -62,6 +61,7 @@ async function fetchPotToken(): Promise<string> {
 
 function sanitizeFilename(title: string): string {
   let name = title.replace(UNSAFE_FILENAME_CHARS, '_').replace(/_+/g, '_').trim();
+  name = name.replace(/^\.+/, '').replace(/[.\s]+$/, '');
   if (!name || name === '_' || WINDOWS_RESERVED_NAMES.test(name)) {
     name = 'video';
   }
@@ -72,7 +72,7 @@ function sanitizeFilename(title: string): string {
 }
 
 function saveTextAsFile(text: string, fileName: string): void {
-  const blob = new Blob([text], { type: 'text/plain' });
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
   const href = URL.createObjectURL(blob);
 
   const link = document.createElement('a');

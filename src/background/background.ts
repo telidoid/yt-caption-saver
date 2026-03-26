@@ -1,12 +1,11 @@
 import type { Message } from '../types/messages';
-import { YOUTUBE_TIMEDTEXT_PATTERN } from '../constants';
+import { YOUTUBE_TIMEDTEXT_PATTERN, YOUTUBE_ALLOWED_ORIGINS } from '../constants';
 
 // Background script: intercepts YouTube's own timedtext requests to capture
 // the `pot` (Proof of Origin Token) parameter, which is required to fetch
 // subtitle content from YouTube's API.
 
 const MAX_POT_ENTRIES = 100;
-const YOUTUBE_ORIGIN = 'https://www.youtube.com';
 const potByTab = new Map<number, string>();
 
 browser.webRequest.onBeforeRequest.addListener(
@@ -35,7 +34,7 @@ browser.tabs.onRemoved.addListener((tabId) => {
 
 // Clear stale POT when the user navigates away from the page within the same tab
 browser.webNavigation.onCommitted.addListener((details) => {
-  if (details.frameId === 0) {
+  if (details.frameId === 0 && !YOUTUBE_ALLOWED_ORIGINS.some((o) => details.url.startsWith(o))) {
     potByTab.delete(details.tabId);
   }
 });
@@ -44,7 +43,7 @@ browser.runtime.onMessage.addListener((message: Message, sender) => {
   if (message.type === 'GET_POT') {
     // Only respond to requests from YouTube tabs
     const senderUrl = sender.tab?.url ?? sender.url ?? '';
-    if (!senderUrl.startsWith(YOUTUBE_ORIGIN)) {
+    if (!YOUTUBE_ALLOWED_ORIGINS.some((o) => senderUrl.startsWith(o))) {
       return Promise.resolve({ type: 'POT_RESPONSE', payload: { pot: null } } as Message);
     }
     const pot = sender.tab?.id != null ? potByTab.get(sender.tab.id) ?? null : null;

@@ -104,7 +104,7 @@ async function downloadTrack(track: SubtitleTrack): Promise<void> {
   };
   let response: Message;
   try {
-    response = await browser.tabs.sendMessage(activeTab.id, request) as Message;
+    response = await sendMessageWithRetry(activeTab.id, request);
   } catch {
     statusEl.textContent = 'Could not connect to the page. Try refreshing.';
     return;

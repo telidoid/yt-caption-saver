@@ -4,6 +4,14 @@ interface TimedCue {
   text: string;
 }
 
+const htmlDecodeEl = document.createElement('textarea');
+
+function decodeHtmlEntities(text: string): string {
+  if (!text.includes('&')) return text;
+  htmlDecodeEl.innerHTML = text;
+  return htmlDecodeEl.value;
+}
+
 function parseTimedTextXml(xml: string): TimedCue[] {
   if (!xml.trim()) {
     throw new Error('Empty subtitle XML received from YouTube');
@@ -18,7 +26,8 @@ function parseTimedTextXml(xml: string): TimedCue[] {
     .map((el) => {
       const start = parseFloat(el.getAttribute('start') ?? '');
       const duration = parseFloat(el.getAttribute('dur') ?? '');
-      const text = (el.textContent ?? '').trim();
+      const raw = (el.textContent ?? '').trim();
+      const text = decodeHtmlEntities(raw);
       return {
         start: Number.isFinite(start) ? start : 0,
         duration: Number.isFinite(duration) ? duration : 0,

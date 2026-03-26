@@ -54,29 +54,16 @@ function startPolling(): void {
   uiPollInterval = setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);
 }
 
-function stopPolling(): void {
-  if (uiPollInterval !== null) {
-    clearInterval(uiPollInterval);
-    uiPollInterval = null;
-  }
-}
-
 startPolling();
 
 function handleNavigateFinish(): void {
   lastVideoId = null;
   clearTrackCache();
   document.getElementById(CONTAINER_ID)?.remove();
-}
-
-function handleBeforeUnload(): void {
-  stopPolling();
-  window.removeEventListener('yt-navigate-finish', handleNavigateFinish);
-  window.removeEventListener('beforeunload', handleBeforeUnload);
+  checkAndRenderUI();
 }
 
 window.addEventListener('yt-navigate-finish', handleNavigateFinish);
-window.addEventListener('beforeunload', handleBeforeUnload);
 
 // --- Message listeners (for popup) ---
 

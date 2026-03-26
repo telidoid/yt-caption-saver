@@ -1,5 +1,5 @@
 import type { SubtitleTrack } from '../types/messages';
-import { YOUTUBE_WATCH_URL } from '../constants';
+import { YOUTUBE_WATCH_URL, YOUTUBE_ALLOWED_ORIGINS } from '../constants';
 
 interface RawCaptionTrack {
   baseUrl?: string;
@@ -9,13 +9,21 @@ interface RawCaptionTrack {
 }
 
 const CAPTION_TRACKS_KEY = '"captionTracks":';
-const YOUTUBE_ORIGIN = 'https://www.youtube.com';
+const MAX_TRACK_CACHE_ENTRIES = 50;
 let fetchAbortController: AbortController | null = null;
 const trackCache = new Map<string, SubtitleTrack[]>();
 const pendingFetches = new Map<string, Promise<SubtitleTrack[]>>();
 
 export function clearTrackCache(): void {
   trackCache.clear();
+}
+
+function cacheSet(videoId: string, tracks: SubtitleTrack[]): void {
+  if (!trackCache.has(videoId) && trackCache.size >= MAX_TRACK_CACHE_ENTRIES) {
+    const oldest = trackCache.keys().next().value!;
+    trackCache.delete(oldest);
+  }
+  trackCache.set(videoId, tracks);
 }
 
 export async function fetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> {
@@ -52,7 +60,7 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
 
   const captionJson = extractCaptionTracksJson(html);
   if (!captionJson) {
-    trackCache.set(videoId, []);
+    cacheSet(videoId, []);
     return [];
   }
 
@@ -61,7 +69,7 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
     raw = JSON.parse(captionJson) as RawCaptionTrack[];
   } catch (err) {
     console.warn('[YT Caption Saver] Failed to parse captionTracks JSON:', err);
-    trackCache.set(videoId, []);
+    cacheSet(videoId, []);
     return [];
   }
 
@@ -69,7 +77,7 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
     .filter((t): t is RawCaptionTrack & { baseUrl: string } => {
       if (typeof t.baseUrl !== 'string') return false;
       try {
-        return new URL(t.baseUrl).origin === YOUTUBE_ORIGIN;
+        return YOUTUBE_ALLOWED_ORIGINS.includes(new URL(t.baseUrl).origin);
       } catch {
         return false;
       }
@@ -81,7 +89,7 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
       languageName: t.name?.simpleText ?? t.languageCode ?? 'unknown',
     }));
 
-  trackCache.set(videoId, tracks);
+  cacheSet(videoId, tracks);
   return tracks;
 }
 

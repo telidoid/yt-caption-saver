@@ -102,3 +102,71 @@ parsedUrl.searchParams.set('pot', pot);
 **Problem:** The `downloadSubtitle()` call in the click handler was wrapped in a synchronous try/catch with a `settled` flag. Since `downloadSubtitle` is an `async` function, it always returns a promise and never throws synchronously — the outer catch block could never execute.
 
 **Fix:** Removed the dead try/catch and `settled` flag, leaving just the promise chain (`.then()/.catch()/.finally()`).
+
+---
+
+## Second-Pass Fixes (2026-03-26)
+
+### 17. `webNavigation.onCommitted` clears POT too aggressively (`background.ts`)
+**Problem:** Every same-tab navigation deleted the POT token, including YouTube SPA navigations within youtube.com. The POT was cleared before the new video's timedtext request could re-populate it, causing "No POT token available" errors on the next download attempt.
+
+**Fix:** Added a URL check — only clear POT when navigating **away** from YouTube (`!details.url.startsWith(YOUTUBE_ORIGIN)`), preserving the token during intra-YouTube SPA navigations.
+
+### 18. UI not re-rendered immediately after SPA navigation (`content.ts`)
+**Problem:** `handleNavigateFinish` cleared state and removed the old UI container, but relied on the next polling interval tick (up to 500ms) to detect the new video and re-render.
+
+**Fix:** Added a `checkAndRenderUI()` call at the end of `handleNavigateFinish` for immediate re-render on navigation.
+
+### 19. `beforeunload` handler permanently breaks extension in SPA context (`content.ts`)
+**Problem:** The `beforeunload` handler removed the `yt-navigate-finish` listener and stopped polling. In YouTube's SPA model, `beforeunload` can fire on navigations that don't actually unload the page. Once triggered, the extension was permanently broken until a full page reload.
+
+**Fix:** Removed the `beforeunload` handler entirely. Content script cleanup on true page unload happens automatically when the browsing context is destroyed — explicit teardown is unnecessary and harmful in SPA contexts.
+
+### 20. Missing `charset=utf-8` on blob MIME type (`downloader.ts`)
+**Problem:** The Blob was created with `type: 'text/plain'` without specifying a charset. Non-ASCII subtitle text (accented characters, CJK, etc.) could be misinterpreted on platforms that don't default to UTF-8.
+
+**Fix:** Changed MIME type to `'text/plain;charset=utf-8'`.
+
+### 21. Origin validation mismatch between `background.ts` and `downloader.ts` (`constants.ts`, `background.ts`, `downloader.ts`, `subtitle-parser.ts`)
+**Problem:** `background.ts` checked `senderUrl.startsWith('https://www.youtube.com')` (www only), while `downloader.ts` used a local `ALLOWED_ORIGINS` array that also included `https://youtube.com` (non-www). `subtitle-parser.ts` had its own hardcoded `YOUTUBE_ORIGIN` constant. The inconsistency could cause origin checks to pass in one module but fail in another.
+
+**Fix:** Extracted `YOUTUBE_ALLOWED_ORIGINS` into `constants.ts` and updated all three modules (`background.ts`, `downloader.ts`, `subtitle-parser.ts`) to import and use the shared list.
+
+### 22. `trackCache` in `subtitle-parser.ts` is unbounded
+**Problem:** The `Map<string, SubtitleTrack[]>` grew without limit. Each unique video ID added an entry only cleared on SPA navigation. A long-lived tab visiting many videos would accumulate entries indefinitely.
+
+**Fix:** Added `MAX_TRACK_CACHE_ENTRIES = 50` cap with FIFO eviction via a `cacheSet()` helper. All three `trackCache.set` call sites now go through `cacheSet()`.
+
+### 23. `sanitizeFilename` doesn't strip leading/trailing dots (`downloader.ts`)
+**Problem:** After replacing unsafe chars, filenames like `...video...` passed through. Leading dots create hidden files on Unix; Windows doesn't handle trailing dots/spaces well.
+
+**Fix:** Added `.replace(/^\.+/, '').replace(/[.\s]+$/, '')` after the initial sanitization pass, before the emptiness check.
+
+### 24. HTML entity decoding gaps in subtitle text (`converter.ts`)
+**Problem:** `DOMParser` with `text/xml` handles standard XML entities (`&amp;`, `&lt;`) but not HTML-specific named entities like `&nbsp;` or numeric entities like `&#39;`. YouTube subtitles sometimes contain these, resulting in raw entity text in downloaded files.
+
+**Fix:** Added a `decodeHtmlEntities()` helper that uses a `<textarea>` element's `innerHTML`/`value` roundtrip to decode all HTML entities. Applied to each cue's text after extraction from the XML.
+
+### 25. `popup.ts` doesn't retry `DOWNLOAD_SUBTITLE` messages
+**Problem:** `init()` used `sendMessageWithRetry` for `GET_VIDEO_INFO`, but `downloadTrack` used a raw `browser.tabs.sendMessage`. If the content script was momentarily unresponsive, the download failed without retrying.
+
+**Fix:** Changed `downloadTrack` to use `sendMessageWithRetry` for the `DOWNLOAD_SUBTITLE` message.
+
+### 26. Background script uses `"persistent": true` (`manifest.json`)
+**Problem:** The background script never unloaded, consuming resources even when idle.
+
+**Fix:** Changed to `"persistent": false` (event page). The `potByTab` map is lost on unload, but the existing polling/retry logic in `fetchPotToken` handles this gracefully — YouTube's own subtitle requests will re-populate the POT when the user interacts with the page.
+
+---
+
+## Third-Pass Fixes (2026-03-26)
+
+### 27. Infinite recursion in `cacheSet` helper (`subtitle-parser.ts`)
+**Problem:** A bulk find-and-replace accidentally converted `trackCache.set()` inside the `cacheSet` helper to `cacheSet()`, causing infinite recursion. Every subtitle fetch would crash with a stack overflow.
+
+**Fix:** Restored `trackCache.set(videoId, tracks)` inside the `cacheSet` function body.
+
+### 28. Dead `stopPolling` function (`content.ts`)
+**Problem:** After removing the `beforeunload` handler (fix #19), `stopPolling()` had no remaining callers and was dead code.
+
+**Fix:** Removed the `stopPolling` function.
