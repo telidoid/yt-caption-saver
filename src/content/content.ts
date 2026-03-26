@@ -1,6 +1,6 @@
 import type { Message, VideoInfo } from '../types/messages';
 import { YOUTUBE_TITLE_SUFFIX, UI_POLL_INTERVAL_MS } from '../constants';
-import { fetchSubtitleTracks } from './subtitle-parser';
+import { fetchSubtitleTracks, clearTrackCache } from './subtitle-parser';
 import { downloadSubtitle } from './downloader';
 import { renderInPageUI, isUIPresent, canInsertUI } from './ui';
 
@@ -38,6 +38,7 @@ const uiPollInterval = setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);
 
 window.addEventListener('yt-navigate-finish', () => {
   lastVideoId = null;
+  clearTrackCache();
 });
 
 window.addEventListener('beforeunload', () => {
