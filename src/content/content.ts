@@ -5,6 +5,7 @@ import { downloadSubtitle } from './downloader';
 import { renderInPageUI, isUIPresent, canInsertUI } from './ui';
 
 let lastVideoId: string | null = null;
+let isCheckingUI = false;
 
 function getVideoId(): string | null {
   return new URL(window.location.href).searchParams.get('v');
@@ -24,14 +25,26 @@ async function buildVideoInfo(): Promise<VideoInfo | null> {
 // --- In-page UI lifecycle ---
 
 async function checkAndRenderUI(): Promise<void> {
+  if (isCheckingUI) return;
   const videoId = getVideoId();
   if (!videoId) return;
   if (videoId === lastVideoId && isUIPresent()) return;
   if (!canInsertUI()) return;
 
-  lastVideoId = videoId;
-  const tracks = await fetchSubtitleTracks(videoId);
-  renderInPageUI(tracks);
+  isCheckingUI = true;
+  try {
+    lastVideoId = videoId;
+    const tracks = await fetchSubtitleTracks(videoId);
+    renderInPageUI(tracks);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      lastVideoId = null; // Reset so the next poll retries
+    } else {
+      throw err;
+    }
+  } finally {
+    isCheckingUI = false;
+  }
 }
 
 const uiPollInterval = setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);

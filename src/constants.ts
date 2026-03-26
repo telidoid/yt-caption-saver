@@ -6,7 +6,7 @@ export const YOUTUBE_TITLE_SUFFIX = / - YouTube$/i;
 
 // Timing (ms)
 export const UI_POLL_INTERVAL_MS = 500;
-export const BLOB_CLEANUP_DELAY_MS = 100;
+export const BLOB_CLEANUP_DELAY_MS = 1000;
 export const ERROR_DISPLAY_DURATION_MS = 3000;
 
 // UI colors

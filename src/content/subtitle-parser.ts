@@ -29,13 +29,15 @@ export async function fetchSubtitleTracks(videoId: string): Promise<SubtitleTrac
 
   const url = YOUTUBE_WATCH_URL + videoId;
   const html = await fetch(url, { signal: fetchAbortController.signal }).then((r) => r.text());
+
   const match = CAPTION_TRACKS_REGEX.exec(html);
   if (!match) return [];
 
   let raw: RawCaptionTrack[];
   try {
     raw = JSON.parse(match[1]) as RawCaptionTrack[];
-  } catch {
+  } catch (err) {
+    console.warn('[YT Caption Saver] Failed to parse captionTracks JSON:', err);
     return [];
   }
 

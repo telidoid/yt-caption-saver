@@ -10,29 +10,35 @@ export async function downloadSubtitle(
   format: 'srt' | 'txt',
 ): Promise<void> {
   downloadAbortController?.abort();
-  downloadAbortController = new AbortController();
+  const controller = new AbortController();
+  downloadAbortController = controller;
 
-  const pot = await fetchPotToken();
-  const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + pot;
+  try {
+    const pot = await fetchPotToken();
+    const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + pot;
 
-  const response = await fetch(fullUrl, { signal: downloadAbortController.signal });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch subtitles: ${response.status}`);
+    const response = await fetch(fullUrl, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch subtitles: ${response.status}`);
+    }
+    const xml = await response.text();
+
+    const content = format === 'srt' ? xmlToSrt(xml) : xmlToTxt(xml);
+    const title = document.title.replace(YOUTUBE_TITLE_SUFFIX, '');
+    const safeTitle = title.replace(UNSAFE_FILENAME_CHARS, '_').trim();
+
+    saveTextAsFile(content, `${safeTitle}.${languageCode}.${format}`);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return;
+    throw err;
   }
-  const xml = await response.text();
-
-  const content = format === 'srt' ? xmlToSrt(xml) : xmlToTxt(xml);
-  const title = document.title.replace(YOUTUBE_TITLE_SUFFIX, '');
-  const safeTitle = title.replace(UNSAFE_FILENAME_CHARS, '_').trim();
-
-  saveTextAsFile(content, `${safeTitle}.${languageCode}.${format}`);
 }
 
 async function fetchPotToken(): Promise<string> {
   const request: Message = { type: 'GET_POT' };
-  const response = await browser.runtime.sendMessage(request) as Message;
+  const response = await browser.runtime.sendMessage(request) as Message | undefined;
 
-  if (response.type !== 'POT_RESPONSE' || !response.payload.pot) {
+  if (!response || response.type !== 'POT_RESPONSE' || !response.payload.pot) {
     throw new Error('No POT token available. Please enable subtitles (CC button) and refresh the page.');
   }
   return response.payload.pot;
