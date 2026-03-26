@@ -2,15 +2,20 @@ import type { Message } from '../types/messages';
 import { YOUTUBE_TITLE_SUFFIX, UNSAFE_FILENAME_CHARS, BLOB_CLEANUP_DELAY_MS } from '../constants';
 import { xmlToSrt, xmlToTxt } from './converter';
 
+let downloadAbortController: AbortController | null = null;
+
 export async function downloadSubtitle(
   baseUrl: string,
   languageCode: string,
   format: 'srt' | 'txt',
 ): Promise<void> {
+  downloadAbortController?.abort();
+  downloadAbortController = new AbortController();
+
   const pot = await fetchPotToken();
   const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + pot;
 
-  const response = await fetch(fullUrl);
+  const response = await fetch(fullUrl, { signal: downloadAbortController.signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch subtitles: ${response.status}`);
   }
