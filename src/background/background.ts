@@ -5,6 +5,7 @@ import { YOUTUBE_TIMEDTEXT_PATTERN } from '../constants';
 // the `pot` (Proof of Origin Token) parameter, which is required to fetch
 // subtitle content from YouTube's API.
 
+const MAX_POT_ENTRIES = 100;
 const potByTab = new Map<number, string>();
 
 browser.webRequest.onBeforeRequest.addListener(
@@ -15,6 +16,11 @@ browser.webRequest.onBeforeRequest.addListener(
       const fromExt = url.searchParams.get('fromExt');
       // Only capture pot from YouTube's own requests, not our extension's
       if (pot && !fromExt) {
+        // Evict oldest entry if at capacity
+        if (!potByTab.has(details.tabId) && potByTab.size >= MAX_POT_ENTRIES) {
+          const oldest = potByTab.keys().next().value!;
+          potByTab.delete(oldest);
+        }
         potByTab.set(details.tabId, pot);
       }
     }
@@ -24,6 +30,13 @@ browser.webRequest.onBeforeRequest.addListener(
 
 browser.tabs.onRemoved.addListener((tabId) => {
   potByTab.delete(tabId);
+});
+
+// Clear stale POT when the user navigates away from the page within the same tab
+browser.webNavigation.onCommitted.addListener((details) => {
+  if (details.frameId === 0) {
+    potByTab.delete(details.tabId);
+  }
 });
 
 browser.runtime.onMessage.addListener((message: Message, sender) => {

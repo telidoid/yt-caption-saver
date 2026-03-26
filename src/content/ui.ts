@@ -34,10 +34,31 @@ function findInsertionPoint(): Element | null {
   return null;
 }
 
+const FORMAT_SELECT_ID = 'yt-subtitle-format';
+
+function getSelectedFormat(): 'srt' | 'txt' {
+  const select = document.getElementById(FORMAT_SELECT_ID) as HTMLSelectElement | null;
+  return select?.value === 'txt' ? 'txt' : 'srt';
+}
+
+function createFormatSelect(): HTMLSelectElement {
+  const select = document.createElement('select');
+  select.id = FORMAT_SELECT_ID;
+  select.style.cssText = `margin-right:10px;font-size:12px;background:#1a1a1a;color:${COLOR_MUTED};border:1px solid #555;border-radius:3px;padding:1px 4px`;
+  for (const fmt of ['srt', 'txt'] as const) {
+    const opt = document.createElement('option');
+    opt.value = fmt;
+    opt.textContent = fmt.toUpperCase();
+    select.appendChild(opt);
+  }
+  return select;
+}
+
 function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
   const link = document.createElement('a');
   link.textContent = trackDisplayName(track);
   link.href = '#';
+  link.setAttribute('role', 'button');
   link.style.cssText = LINK_STYLE;
   link.className = LINK_CLASS;
   let isDownloading = false;
@@ -49,7 +70,7 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
     link.style.color = COLOR_MUTED;
     link.textContent = 'Downloading...';
 
-    downloadSubtitle(track.baseUrl, track.languageCode, 'srt')
+    downloadSubtitle(track.baseUrl, track.languageCode, getSelectedFormat())
       .then(() => {
         link.textContent = trackDisplayName(track);
         link.style.color = COLOR_LINK;
@@ -93,6 +114,7 @@ export function renderInPageUI(tracks: SubtitleTrack[]): void {
     noSubs.style.fontStyle = 'italic';
     container.appendChild(noSubs);
   } else {
+    container.appendChild(createFormatSelect());
     for (const track of tracks) {
       container.appendChild(createTrackLink(track));
     }

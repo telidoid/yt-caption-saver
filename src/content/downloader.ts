@@ -5,11 +5,18 @@ import {
 } from '../constants';
 import { xmlToSrt, xmlToTxt } from './converter';
 
+const ALLOWED_ORIGINS = ['https://www.youtube.com', 'https://youtube.com'];
+
 export async function downloadSubtitle(
   baseUrl: string,
   languageCode: string,
   format: 'srt' | 'txt',
 ): Promise<void> {
+  const parsedUrl = new URL(baseUrl);
+  if (!ALLOWED_ORIGINS.includes(parsedUrl.origin)) {
+    throw new Error('Subtitle URL is not from YouTube');
+  }
+
   const pot = await fetchPotToken();
   const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + encodeURIComponent(pot);
 

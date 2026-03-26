@@ -49,12 +49,15 @@ function renderTracks(info: VideoInfo): void {
   statusEl.textContent = `"${info.title}"`;
 
   if (info.availableTracks.length === 0) {
-    trackListEl.innerHTML = '<p style="font-size:0.875rem;color:#666">No subtitle tracks found.</p>';
+    const p = document.createElement('p');
+    p.style.cssText = 'font-size:0.875rem;color:#666';
+    p.textContent = 'No subtitle tracks found.';
+    trackListEl.replaceChildren(p);
     return;
   }
 
   formatRowEl.style.display = '';
-  trackListEl.innerHTML = '';
+  trackListEl.replaceChildren();
 
   for (const track of info.availableTracks) {
     const div = document.createElement('div');
