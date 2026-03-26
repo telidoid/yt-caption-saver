@@ -11,33 +11,21 @@ function getVideoId(): string | null {
   return url.searchParams.get('v');
 }
 
-function extractPlayerResponse(): Record<string, unknown> | null {
-  const scripts = Array.from(document.querySelectorAll('script'));
-  for (const script of scripts) {
-    const text = script.textContent ?? '';
-    if (text.includes('ytInitialPlayerResponse')) {
-      const match = text.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
-      if (match) {
-        try {
-          return JSON.parse(match[1]) as Record<string, unknown>;
-        } catch {
-          return null;
-        }
-      }
-    }
+async function fetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> {
+  // Fetch fresh page HTML for the video to get current captionTracks data.
+  // Parsing DOM script tags doesn't work after SPA navigation because YouTube
+  // doesn't recreate <script> tags containing ytInitialPlayerResponse.
+  const url = 'https://www.youtube.com/watch?v=' + videoId;
+  const html = await fetch(url).then((r) => r.text());
+  const match = /\{"captionTracks":(\[.*?\]),/.exec(html);
+  if (!match) return [];
+
+  let captionTracks: unknown[];
+  try {
+    captionTracks = JSON.parse(match[1]) as unknown[];
+  } catch {
+    return [];
   }
-  return null;
-}
-
-function extractSubtitleTracks(playerResponse: Record<string, unknown>): SubtitleTrack[] {
-  const captions = playerResponse['captions'];
-  if (typeof captions !== 'object' || captions === null) return [];
-
-  const renderer = (captions as Record<string, unknown>)['playerCaptionsTracklistRenderer'];
-  if (typeof renderer !== 'object' || renderer === null) return [];
-
-  const captionTracks = (renderer as Record<string, unknown>)['captionTracks'];
-  if (!Array.isArray(captionTracks)) return [];
 
   const tracks: SubtitleTrack[] = [];
   for (const track of captionTracks) {
@@ -61,12 +49,10 @@ function extractSubtitleTracks(playerResponse: Record<string, unknown>): Subtitl
   return tracks;
 }
 
-function buildVideoInfo(): VideoInfo | null {
+async function buildVideoInfo(): Promise<VideoInfo | null> {
   const videoId = getVideoId();
   if (!videoId) return null;
-  const playerResponse = extractPlayerResponse();
-  if (!playerResponse) return null;
-  const tracks = extractSubtitleTracks(playerResponse);
+  const tracks = await fetchSubtitleTracks(videoId);
   return {
     videoId,
     title: document.title.replace(' - YouTube', ''),
@@ -260,7 +246,7 @@ function renderInPageUI(tracks: SubtitleTrack[]): void {
   insertPoint.parentNode?.insertBefore(container, insertPoint);
 }
 
-function checkAndRenderUI(): void {
+async function checkAndRenderUI(): Promise<void> {
   const videoId = getVideoId();
   if (!videoId) return;
   if (videoId === lastVideoId && document.getElementById(CONTAINER_ID)) return;
@@ -268,12 +254,7 @@ function checkAndRenderUI(): void {
   if (!findInsertionPoint()) return;
 
   lastVideoId = videoId;
-  const playerResponse = extractPlayerResponse();
-  if (!playerResponse) {
-    renderInPageUI([]);
-    return;
-  }
-  const tracks = extractSubtitleTracks(playerResponse);
+  const tracks = await fetchSubtitleTracks(videoId);
   renderInPageUI(tracks);
 }
 
@@ -290,9 +271,9 @@ window.addEventListener('yt-navigate-finish', () => {
 
 browser.runtime.onMessage.addListener((message: Message) => {
   if (message.type === 'GET_VIDEO_INFO') {
-    const info = buildVideoInfo();
-    const response: Message = { type: 'VIDEO_INFO_RESPONSE', payload: info };
-    return Promise.resolve(response);
+    return buildVideoInfo().then((info): Message => ({
+      type: 'VIDEO_INFO_RESPONSE', payload: info,
+    }));
   }
 
   if (message.type === 'DOWNLOAD_SUBTITLE') {
