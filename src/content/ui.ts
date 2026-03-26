@@ -70,30 +70,12 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
     link.style.color = COLOR_MUTED;
     link.textContent = 'Downloading...';
 
-    let settled = false;
-    try {
-      downloadSubtitle(track.baseUrl, track.languageCode, getSelectedFormat())
-        .then(() => {
-          settled = true;
-          link.textContent = trackDisplayName(track);
-          link.style.color = COLOR_LINK;
-        })
-        .catch((err) => {
-          settled = true;
-          link.textContent = 'Error';
-          link.style.color = COLOR_ERROR;
-          console.error('[YT Caption Saver] Subtitle download failed:', err);
-          setTimeout(() => {
-            link.textContent = trackDisplayName(track);
-            link.style.color = COLOR_LINK;
-          }, ERROR_DISPLAY_DURATION_MS);
-        })
-        .finally(() => {
-          isDownloading = false;
-        });
-    } catch (err) {
-      if (!settled) {
-        isDownloading = false;
+    downloadSubtitle(track.baseUrl, track.languageCode, getSelectedFormat())
+      .then(() => {
+        link.textContent = trackDisplayName(track);
+        link.style.color = COLOR_LINK;
+      })
+      .catch((err) => {
         link.textContent = 'Error';
         link.style.color = COLOR_ERROR;
         console.error('[YT Caption Saver] Subtitle download failed:', err);
@@ -101,8 +83,10 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
           link.textContent = trackDisplayName(track);
           link.style.color = COLOR_LINK;
         }, ERROR_DISPLAY_DURATION_MS);
-      }
-    }
+      })
+      .finally(() => {
+        isDownloading = false;
+      });
   });
 
   return link;

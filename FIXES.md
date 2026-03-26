@@ -97,3 +97,8 @@ parsedUrl.searchParams.set('pot', pot);
 **Problem:** If `insertPoint.parentNode` was null, the UI wouldn't render with no feedback.
 
 **Fix:** Added explicit null check for both `insertPoint` and `insertPoint.parentNode`, with a `console.warn` when the insertion point can't be found.
+
+### 16. Dead code: unnecessary try/catch around async call (`ui.ts`)
+**Problem:** The `downloadSubtitle()` call in the click handler was wrapped in a synchronous try/catch with a `settled` flag. Since `downloadSubtitle` is an `async` function, it always returns a promise and never throws synchronously — the outer catch block could never execute.
+
+**Fix:** Removed the dead try/catch and `settled` flag, leaving just the promise chain (`.then()/.catch()/.finally()`).
