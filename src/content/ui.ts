@@ -10,7 +10,7 @@ function ensureStyles(): void {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = `.${LINK_CLASS}:hover { text-decoration: underline; }`;
+  style.textContent = `.${LINK_CLASS} { text-decoration: none; } .${LINK_CLASS}:hover { text-decoration: underline; }`;
   document.head.appendChild(style);
 }
 
@@ -19,7 +19,7 @@ const CONTAINER_STYLE =
   `color:${COLOR_MUTED};display:flex;flex-wrap:wrap;align-items:center;gap:4px 0`;
 
 const LINK_STYLE =
-  `margin-right:10px;cursor:pointer;color:${COLOR_LINK};text-decoration:none;font-size:13px`;
+  `margin-right:10px;cursor:pointer;color:${COLOR_LINK};font-size:13px`;
 
 const INSERTION_SELECTORS = [
   '#bottom-row',
