@@ -53,7 +53,11 @@ function renderTracks(info: VideoInfo): void {
 
     const btn = document.createElement('button');
     btn.textContent = 'Download';
-    btn.addEventListener('click', () => downloadTrack(track));
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      downloadTrack(track).finally(() => { btn.disabled = false; });
+    });
 
     div.appendChild(label);
     div.appendChild(btn);
@@ -87,6 +91,8 @@ async function downloadTrack(track: SubtitleTrack): Promise<void> {
     statusEl.textContent = response.payload.success
       ? 'Download started.'
       : `Error: ${response.payload.error}`;
+  } else {
+    statusEl.textContent = 'Error: unexpected response from page.';
   }
 }
 

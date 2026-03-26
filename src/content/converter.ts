@@ -6,13 +6,16 @@ interface TimedCue {
 
 function parseTimedTextXml(xml: string): TimedCue[] {
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
+  if (doc.querySelector('parsererror')) {
+    throw new Error('Invalid subtitle XML received from YouTube');
+  }
   const elements = Array.from(doc.getElementsByTagName('text'));
 
   return elements
     .map((el) => ({
       start: parseFloat(el.getAttribute('start') ?? '0'),
       duration: parseFloat(el.getAttribute('dur') ?? '0'),
-      text: (el.childNodes[0]?.nodeValue ?? '')
+      text: (el.textContent ?? '')
         .replace(/\\n/g, '\n')
         .replace(/\\"/g, '"')
         .trim(),
@@ -22,11 +25,11 @@ function parseTimedTextXml(xml: string): TimedCue[] {
 
 function unescapeHtmlEntities(text: string): string {
   return text
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&#39;/g, "'");
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
 }
 
 function formatTimestamp(seconds: number): string {

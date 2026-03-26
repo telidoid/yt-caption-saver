@@ -11,6 +11,7 @@ interface RawCaptionTrack {
 const CAPTION_TRACKS_REGEX = /\{"captionTracks":(\[.*?\]),/;
 let fetchAbortController: AbortController | null = null;
 const trackCache = new Map<string, SubtitleTrack[]>();
+const pendingFetches = new Map<string, Promise<SubtitleTrack[]>>();
 
 export function clearTrackCache(): void {
   trackCache.clear();
@@ -21,6 +22,16 @@ export async function fetchSubtitleTracks(videoId: string): Promise<SubtitleTrac
     return trackCache.get(videoId)!;
   }
 
+  // Deduplicate concurrent fetches for the same videoId
+  const pending = pendingFetches.get(videoId);
+  if (pending) return pending;
+
+  const promise = doFetchSubtitleTracks(videoId);
+  pendingFetches.set(videoId, promise);
+  return promise.finally(() => pendingFetches.delete(videoId));
+}
+
+async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> {
   // Fetch fresh page HTML to get current captionTracks data.
   // Parsing DOM script tags doesn't work after SPA navigation because YouTube
   // doesn't recreate <script> tags containing ytInitialPlayerResponse.
@@ -28,16 +39,24 @@ export async function fetchSubtitleTracks(videoId: string): Promise<SubtitleTrac
   fetchAbortController = new AbortController();
 
   const url = YOUTUBE_WATCH_URL + videoId;
-  const html = await fetch(url, { signal: fetchAbortController.signal }).then((r) => r.text());
+  const response = await fetch(url, { signal: fetchAbortController.signal });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch video page: ${response.status}`);
+  }
+  const html = await response.text();
 
   const match = CAPTION_TRACKS_REGEX.exec(html);
-  if (!match) return [];
+  if (!match) {
+    trackCache.set(videoId, []);
+    return [];
+  }
 
   let raw: RawCaptionTrack[];
   try {
     raw = JSON.parse(match[1]) as RawCaptionTrack[];
   } catch (err) {
     console.warn('[YT Caption Saver] Failed to parse captionTracks JSON:', err);
+    trackCache.set(videoId, []);
     return [];
   }
 

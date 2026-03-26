@@ -15,7 +15,7 @@ export async function downloadSubtitle(
 
   try {
     const pot = await fetchPotToken();
-    const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + pot;
+    const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + encodeURIComponent(pot);
 
     const response = await fetch(fullUrl, { signal: controller.signal });
     if (!response.ok) {
@@ -25,7 +25,7 @@ export async function downloadSubtitle(
 
     const content = format === 'srt' ? xmlToSrt(xml) : xmlToTxt(xml);
     const title = document.title.replace(YOUTUBE_TITLE_SUFFIX, '');
-    const safeTitle = title.replace(UNSAFE_FILENAME_CHARS, '_').trim();
+    const safeTitle = title.replace(UNSAFE_FILENAME_CHARS, '_').trim() || 'video';
 
     saveTextAsFile(content, `${safeTitle}.${languageCode}.${format}`);
   } catch (err) {

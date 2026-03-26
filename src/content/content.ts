@@ -2,7 +2,7 @@ import type { Message, VideoInfo } from '../types/messages';
 import { YOUTUBE_TITLE_SUFFIX, UI_POLL_INTERVAL_MS } from '../constants';
 import { fetchSubtitleTracks, clearTrackCache } from './subtitle-parser';
 import { downloadSubtitle } from './downloader';
-import { renderInPageUI, isUIPresent, canInsertUI } from './ui';
+import { renderInPageUI, isUIPresent, canInsertUI, CONTAINER_ID } from './ui';
 
 let lastVideoId: string | null = null;
 let isCheckingUI = false;
@@ -37,10 +37,9 @@ async function checkAndRenderUI(): Promise<void> {
     const tracks = await fetchSubtitleTracks(videoId);
     renderInPageUI(tracks);
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      lastVideoId = null; // Reset so the next poll retries
-    } else {
-      throw err;
+    lastVideoId = null; // Reset so the next poll retries
+    if (!(err instanceof DOMException && err.name === 'AbortError')) {
+      console.error('[YT Caption Saver] Failed to render UI:', err);
     }
   } finally {
     isCheckingUI = false;
@@ -52,6 +51,7 @@ const uiPollInterval = setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);
 window.addEventListener('yt-navigate-finish', () => {
   lastVideoId = null;
   clearTrackCache();
+  document.getElementById(CONTAINER_ID)?.remove();
 });
 
 window.addEventListener('beforeunload', () => {

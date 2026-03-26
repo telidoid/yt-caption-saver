@@ -2,7 +2,7 @@ import { type SubtitleTrack, trackDisplayName } from '../types/messages';
 import { COLOR_LINK, COLOR_MUTED, COLOR_ERROR, ERROR_DISPLAY_DURATION_MS } from '../constants';
 import { downloadSubtitle } from './downloader';
 
-const CONTAINER_ID = 'yt-subtitle-downloader';
+export const CONTAINER_ID = 'yt-subtitle-downloader';
 const STYLE_ID = 'yt-subtitle-downloader-styles';
 const LINK_CLASS = 'yt-subtitle-link';
 
@@ -40,9 +40,12 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
   link.href = '#';
   link.style.cssText = LINK_STYLE;
   link.className = LINK_CLASS;
+  let isDownloading = false;
 
   link.addEventListener('click', (e) => {
     e.preventDefault();
+    if (isDownloading) return;
+    isDownloading = true;
     link.style.color = COLOR_MUTED;
     link.textContent = 'Downloading...';
 
@@ -59,6 +62,9 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
           link.textContent = trackDisplayName(track);
           link.style.color = COLOR_LINK;
         }, ERROR_DISPLAY_DURATION_MS);
+      })
+      .finally(() => {
+        isDownloading = false;
       });
   });
 
