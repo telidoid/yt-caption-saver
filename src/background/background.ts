@@ -6,6 +6,7 @@ import { YOUTUBE_TIMEDTEXT_PATTERN } from '../constants';
 // subtitle content from YouTube's API.
 
 const MAX_POT_ENTRIES = 100;
+const YOUTUBE_ORIGIN = 'https://www.youtube.com';
 const potByTab = new Map<number, string>();
 
 browser.webRequest.onBeforeRequest.addListener(
@@ -41,6 +42,11 @@ browser.webNavigation.onCommitted.addListener((details) => {
 
 browser.runtime.onMessage.addListener((message: Message, sender) => {
   if (message.type === 'GET_POT') {
+    // Only respond to requests from YouTube tabs
+    const senderUrl = sender.tab?.url ?? sender.url ?? '';
+    if (!senderUrl.startsWith(YOUTUBE_ORIGIN)) {
+      return Promise.resolve({ type: 'POT_RESPONSE', payload: { pot: null } } as Message);
+    }
     const pot = sender.tab?.id != null ? potByTab.get(sender.tab.id) ?? null : null;
     const response: Message = { type: 'POT_RESPONSE', payload: { pot } };
     return Promise.resolve(response);

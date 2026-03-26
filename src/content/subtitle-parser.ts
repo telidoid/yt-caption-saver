@@ -9,6 +9,7 @@ interface RawCaptionTrack {
 }
 
 const CAPTION_TRACKS_KEY = '"captionTracks":';
+const YOUTUBE_ORIGIN = 'https://www.youtube.com';
 let fetchAbortController: AbortController | null = null;
 const trackCache = new Map<string, SubtitleTrack[]>();
 const pendingFetches = new Map<string, Promise<SubtitleTrack[]>>();
@@ -37,13 +38,17 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
   // doesn't recreate <script> tags containing ytInitialPlayerResponse.
   fetchAbortController?.abort();
   fetchAbortController = new AbortController();
+  const { signal } = fetchAbortController;
 
   const url = YOUTUBE_WATCH_URL + videoId;
-  const response = await fetch(url, { signal: fetchAbortController.signal });
+  const response = await fetch(url, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch video page: ${response.status}`);
   }
   const html = await response.text();
+
+  // Guard: if aborted after response arrived, bail out
+  if (signal.aborted) return [];
 
   const captionJson = extractCaptionTracksJson(html);
   if (!captionJson) {
@@ -61,7 +66,14 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
   }
 
   const tracks = raw
-    .filter((t): t is RawCaptionTrack & { baseUrl: string } => typeof t.baseUrl === 'string')
+    .filter((t): t is RawCaptionTrack & { baseUrl: string } => {
+      if (typeof t.baseUrl !== 'string') return false;
+      try {
+        return new URL(t.baseUrl).origin === YOUTUBE_ORIGIN;
+      } catch {
+        return false;
+      }
+    })
     .map((t) => ({
       baseUrl: t.baseUrl,
       languageCode: t.languageCode ?? 'unknown',

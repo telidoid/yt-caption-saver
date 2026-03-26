@@ -6,6 +6,7 @@ import { renderInPageUI, isUIPresent, canInsertUI, CONTAINER_ID } from './ui';
 
 let lastVideoId: string | null = null;
 let isCheckingUI = false;
+let uiPollInterval: ReturnType<typeof setInterval> | null = null;
 
 function getVideoId(): string | null {
   return new URL(window.location.href).searchParams.get('v');
@@ -48,17 +49,34 @@ async function checkAndRenderUI(): Promise<void> {
   }
 }
 
-const uiPollInterval = setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);
+function startPolling(): void {
+  if (uiPollInterval !== null) return;
+  uiPollInterval = setInterval(checkAndRenderUI, UI_POLL_INTERVAL_MS);
+}
 
-window.addEventListener('yt-navigate-finish', () => {
+function stopPolling(): void {
+  if (uiPollInterval !== null) {
+    clearInterval(uiPollInterval);
+    uiPollInterval = null;
+  }
+}
+
+startPolling();
+
+function handleNavigateFinish(): void {
   lastVideoId = null;
   clearTrackCache();
   document.getElementById(CONTAINER_ID)?.remove();
-});
+}
 
-window.addEventListener('beforeunload', () => {
-  clearInterval(uiPollInterval);
-});
+function handleBeforeUnload(): void {
+  stopPolling();
+  window.removeEventListener('yt-navigate-finish', handleNavigateFinish);
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+}
+
+window.addEventListener('yt-navigate-finish', handleNavigateFinish);
+window.addEventListener('beforeunload', handleBeforeUnload);
 
 // --- Message listeners (for popup) ---
 
@@ -70,6 +88,12 @@ browser.runtime.onMessage.addListener((message: Message) => {
   }
 
   if (message.type === 'DOWNLOAD_SUBTITLE') {
+    if (!message.payload) {
+      return Promise.resolve({
+        type: 'DOWNLOAD_RESULT',
+        payload: { success: false, error: 'Missing payload' },
+      } as Message);
+    }
     const { baseUrl, languageCode, format } = message.payload;
     return downloadSubtitle(baseUrl, languageCode, format)
       .then((): Message => ({ type: 'DOWNLOAD_RESULT', payload: { success: true } }))

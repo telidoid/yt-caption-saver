@@ -70,23 +70,39 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
     link.style.color = COLOR_MUTED;
     link.textContent = 'Downloading...';
 
-    downloadSubtitle(track.baseUrl, track.languageCode, getSelectedFormat())
-      .then(() => {
-        link.textContent = trackDisplayName(track);
-        link.style.color = COLOR_LINK;
-      })
-      .catch((err) => {
+    let settled = false;
+    try {
+      downloadSubtitle(track.baseUrl, track.languageCode, getSelectedFormat())
+        .then(() => {
+          settled = true;
+          link.textContent = trackDisplayName(track);
+          link.style.color = COLOR_LINK;
+        })
+        .catch((err) => {
+          settled = true;
+          link.textContent = 'Error';
+          link.style.color = COLOR_ERROR;
+          console.error('[YT Caption Saver] Subtitle download failed:', err);
+          setTimeout(() => {
+            link.textContent = trackDisplayName(track);
+            link.style.color = COLOR_LINK;
+          }, ERROR_DISPLAY_DURATION_MS);
+        })
+        .finally(() => {
+          isDownloading = false;
+        });
+    } catch (err) {
+      if (!settled) {
+        isDownloading = false;
         link.textContent = 'Error';
         link.style.color = COLOR_ERROR;
-        console.error('Subtitle download failed:', err);
+        console.error('[YT Caption Saver] Subtitle download failed:', err);
         setTimeout(() => {
           link.textContent = trackDisplayName(track);
           link.style.color = COLOR_LINK;
         }, ERROR_DISPLAY_DURATION_MS);
-      })
-      .finally(() => {
-        isDownloading = false;
-      });
+      }
+    }
   });
 
   return link;
@@ -97,7 +113,10 @@ export function renderInPageUI(tracks: SubtitleTrack[]): void {
   document.getElementById(CONTAINER_ID)?.remove();
 
   const insertPoint = findInsertionPoint();
-  if (!insertPoint) return;
+  if (!insertPoint || !insertPoint.parentNode) {
+    console.warn('[YT Caption Saver] Could not find insertion point for UI');
+    return;
+  }
 
   const container = document.createElement('div');
   container.id = CONTAINER_ID;
@@ -120,7 +139,7 @@ export function renderInPageUI(tracks: SubtitleTrack[]): void {
     }
   }
 
-  insertPoint.parentNode?.insertBefore(container, insertPoint);
+  insertPoint.parentNode.insertBefore(container, insertPoint);
 }
 
 export function isUIPresent(): boolean {

@@ -6,6 +6,14 @@ const trackListEl = document.getElementById('track-list')!;
 const formatRowEl = document.getElementById('format-row') as HTMLDivElement;
 const formatEl = document.getElementById('format') as HTMLSelectElement;
 
+const VALID_FORMATS = ['srt', 'txt'] as const;
+type Format = typeof VALID_FORMATS[number];
+
+function getSelectedFormat(): Format {
+  const val = formatEl.value;
+  return VALID_FORMATS.includes(val as Format) ? val as Format : 'srt';
+}
+
 async function sendMessageWithRetry(tabId: number, message: Message): Promise<Message> {
   for (let attempt = 0; attempt < POPUP_MAX_RETRIES; attempt++) {
     try {
@@ -81,7 +89,7 @@ function renderTracks(info: VideoInfo): void {
 }
 
 async function downloadTrack(track: SubtitleTrack): Promise<void> {
-  const format = formatEl.value as 'srt' | 'txt';
+  const format = getSelectedFormat();
   statusEl.textContent = 'Downloading...';
 
   const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
