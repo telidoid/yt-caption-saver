@@ -8,7 +8,7 @@ interface RawCaptionTrack {
   name?: { simpleText?: string };
 }
 
-const CAPTION_TRACKS_REGEX = /\{"captionTracks":(\[.*?\]),/;
+const CAPTION_TRACKS_KEY = '"captionTracks":';
 let fetchAbortController: AbortController | null = null;
 const trackCache = new Map<string, SubtitleTrack[]>();
 const pendingFetches = new Map<string, Promise<SubtitleTrack[]>>();
@@ -45,15 +45,15 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
   }
   const html = await response.text();
 
-  const match = CAPTION_TRACKS_REGEX.exec(html);
-  if (!match) {
+  const captionJson = extractCaptionTracksJson(html);
+  if (!captionJson) {
     trackCache.set(videoId, []);
     return [];
   }
 
   let raw: RawCaptionTrack[];
   try {
-    raw = JSON.parse(match[1]) as RawCaptionTrack[];
+    raw = JSON.parse(captionJson) as RawCaptionTrack[];
   } catch (err) {
     console.warn('[YT Caption Saver] Failed to parse captionTracks JSON:', err);
     trackCache.set(videoId, []);
@@ -71,4 +71,29 @@ async function doFetchSubtitleTracks(videoId: string): Promise<SubtitleTrack[]> 
 
   trackCache.set(videoId, tracks);
   return tracks;
+}
+
+/** Extract the captionTracks JSON array using bracket balancing, skipping string contents. */
+function extractCaptionTracksJson(html: string): string | null {
+  const keyIndex = html.indexOf(CAPTION_TRACKS_KEY);
+  if (keyIndex === -1) return null;
+
+  const arrayStart = keyIndex + CAPTION_TRACKS_KEY.length;
+  if (html[arrayStart] !== '[') return null;
+
+  let depth = 0;
+  let inString = false;
+  for (let i = arrayStart; i < html.length; i++) {
+    const ch = html[i];
+    if (inString) {
+      if (ch === '\\') { i++; continue; } // skip escaped character
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === '[') depth++;
+    else if (ch === ']') depth--;
+    if (depth === 0) return html.slice(arrayStart, i + 1);
+  }
+  return null;
 }

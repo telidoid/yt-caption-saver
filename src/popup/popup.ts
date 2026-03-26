@@ -1,10 +1,22 @@
 import { type Message, type VideoInfo, type SubtitleTrack, trackDisplayName } from '../types/messages';
-import { YOUTUBE_WATCH_PATH } from '../constants';
+import { YOUTUBE_WATCH_PATH, POPUP_RETRY_DELAY_MS, POPUP_MAX_RETRIES } from '../constants';
 
 const statusEl = document.getElementById('status')!;
 const trackListEl = document.getElementById('track-list')!;
 const formatRowEl = document.getElementById('format-row') as HTMLDivElement;
 const formatEl = document.getElementById('format') as HTMLSelectElement;
+
+async function sendMessageWithRetry(tabId: number, message: Message): Promise<Message> {
+  for (let attempt = 0; attempt < POPUP_MAX_RETRIES; attempt++) {
+    try {
+      return await browser.tabs.sendMessage(tabId, message) as Message;
+    } catch {
+      if (attempt === POPUP_MAX_RETRIES - 1) throw new Error('Content script not ready');
+      await new Promise((r) => setTimeout(r, POPUP_RETRY_DELAY_MS));
+    }
+  }
+  throw new Error('Content script not ready');
+}
 
 async function init(): Promise<void> {
   const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -19,7 +31,7 @@ async function init(): Promise<void> {
   const request: Message = { type: 'GET_VIDEO_INFO' };
   let response: Message;
   try {
-    response = await browser.tabs.sendMessage(activeTab.id, request) as Message;
+    response = await sendMessageWithRetry(activeTab.id, request);
   } catch {
     statusEl.textContent = 'Could not connect to the page. Try refreshing.';
     return;

@@ -8,11 +8,17 @@ export const YOUTUBE_TITLE_SUFFIX = / - YouTube$/i;
 export const UI_POLL_INTERVAL_MS = 500;
 export const BLOB_CLEANUP_DELAY_MS = 1000;
 export const ERROR_DISPLAY_DURATION_MS = 3000;
+export const POT_POLL_INTERVAL_MS = 100;
+export const POT_POLL_TIMEOUT_MS = 5000;
+export const POPUP_RETRY_DELAY_MS = 200;
+export const POPUP_MAX_RETRIES = 10;
 
 // UI colors
 export const COLOR_LINK = '#3ea6ff';
 export const COLOR_MUTED = '#aaa';
 export const COLOR_ERROR = '#ff4444';
 
-// Filename sanitization: characters unsafe for filesystems
-export const UNSAFE_FILENAME_CHARS = /[/\\:*?"<>|]/g;
+// Filename sanitization
+export const UNSAFE_FILENAME_CHARS = /[/\\:*?"<>|\x00-\x1f]/g;
+export const WINDOWS_RESERVED_NAMES = /^(CON|PRN|AUX|NUL|COM\d|LPT\d)(\.|$)/i;
+export const MAX_FILENAME_LENGTH = 200;

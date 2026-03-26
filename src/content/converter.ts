@@ -5,6 +5,9 @@ interface TimedCue {
 }
 
 function parseTimedTextXml(xml: string): TimedCue[] {
+  if (!xml.trim()) {
+    throw new Error('Empty subtitle XML received from YouTube');
+  }
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   if (doc.querySelector('parsererror')) {
     throw new Error('Invalid subtitle XML received from YouTube');
@@ -12,14 +15,19 @@ function parseTimedTextXml(xml: string): TimedCue[] {
   const elements = Array.from(doc.getElementsByTagName('text'));
 
   return elements
-    .map((el) => ({
-      start: parseFloat(el.getAttribute('start') ?? '0'),
-      duration: parseFloat(el.getAttribute('dur') ?? '0'),
-      text: (el.textContent ?? '')
+    .map((el) => {
+      const start = parseFloat(el.getAttribute('start') ?? '');
+      const duration = parseFloat(el.getAttribute('dur') ?? '');
+      const text = (el.textContent ?? '')
         .replace(/\\n/g, '\n')
         .replace(/\\"/g, '"')
-        .trim(),
-    }))
+        .trim();
+      return {
+        start: Number.isFinite(start) ? start : 0,
+        duration: Number.isFinite(duration) ? duration : 0,
+        text,
+      };
+    })
     .filter((cue) => cue.text.length > 0);
 }
 

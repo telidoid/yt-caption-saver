@@ -35,6 +35,8 @@ async function checkAndRenderUI(): Promise<void> {
   try {
     lastVideoId = videoId;
     const tracks = await fetchSubtitleTracks(videoId);
+    // Guard against navigation that happened while fetching
+    if (getVideoId() !== videoId) return;
     renderInPageUI(tracks);
   } catch (err) {
     lastVideoId = null; // Reset so the next poll retries

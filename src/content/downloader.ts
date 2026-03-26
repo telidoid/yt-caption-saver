@@ -1,47 +1,56 @@
 import type { Message } from '../types/messages';
-import { YOUTUBE_TITLE_SUFFIX, UNSAFE_FILENAME_CHARS, BLOB_CLEANUP_DELAY_MS } from '../constants';
+import {
+  YOUTUBE_TITLE_SUFFIX, UNSAFE_FILENAME_CHARS, BLOB_CLEANUP_DELAY_MS,
+  POT_POLL_INTERVAL_MS, POT_POLL_TIMEOUT_MS, WINDOWS_RESERVED_NAMES, MAX_FILENAME_LENGTH,
+} from '../constants';
 import { xmlToSrt, xmlToTxt } from './converter';
-
-let downloadAbortController: AbortController | null = null;
 
 export async function downloadSubtitle(
   baseUrl: string,
   languageCode: string,
   format: 'srt' | 'txt',
 ): Promise<void> {
-  downloadAbortController?.abort();
-  const controller = new AbortController();
-  downloadAbortController = controller;
+  const pot = await fetchPotToken();
+  const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + encodeURIComponent(pot);
 
-  try {
-    const pot = await fetchPotToken();
-    const fullUrl = baseUrl + '&fromExt=true&c=WEB&pot=' + encodeURIComponent(pot);
-
-    const response = await fetch(fullUrl, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch subtitles: ${response.status}`);
-    }
-    const xml = await response.text();
-
-    const content = format === 'srt' ? xmlToSrt(xml) : xmlToTxt(xml);
-    const title = document.title.replace(YOUTUBE_TITLE_SUFFIX, '');
-    const safeTitle = title.replace(UNSAFE_FILENAME_CHARS, '_').trim() || 'video';
-
-    saveTextAsFile(content, `${safeTitle}.${languageCode}.${format}`);
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') return;
-    throw err;
+  const response = await fetch(fullUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch subtitles: ${response.status}`);
   }
+  const xml = await response.text();
+
+  const content = format === 'srt' ? xmlToSrt(xml) : xmlToTxt(xml);
+  const title = document.title.replace(YOUTUBE_TITLE_SUFFIX, '');
+  const safeTitle = sanitizeFilename(title);
+
+  saveTextAsFile(content, `${safeTitle}.${languageCode}.${format}`);
 }
 
 async function fetchPotToken(): Promise<string> {
-  const request: Message = { type: 'GET_POT' };
-  const response = await browser.runtime.sendMessage(request) as Message | undefined;
+  const deadline = Date.now() + POT_POLL_TIMEOUT_MS;
 
-  if (!response || response.type !== 'POT_RESPONSE' || !response.payload.pot) {
-    throw new Error('No POT token available. Please enable subtitles (CC button) and refresh the page.');
+  while (Date.now() < deadline) {
+    const request: Message = { type: 'GET_POT' };
+    const response = await browser.runtime.sendMessage(request) as Message | undefined;
+
+    if (response?.type === 'POT_RESPONSE' && response.payload.pot) {
+      return response.payload.pot;
+    }
+    await new Promise((r) => setTimeout(r, POT_POLL_INTERVAL_MS));
   }
-  return response.payload.pot;
+
+  throw new Error('No POT token available. Please enable subtitles (CC button) and refresh the page.');
+}
+
+function sanitizeFilename(title: string): string {
+  let name = title.replace(UNSAFE_FILENAME_CHARS, '_').trim();
+  if (!name || WINDOWS_RESERVED_NAMES.test(name)) {
+    name = 'video';
+  }
+  if (name.length > MAX_FILENAME_LENGTH) {
+    name = name.slice(0, MAX_FILENAME_LENGTH);
+  }
+  return name;
 }
 
 function saveTextAsFile(text: string, fileName: string): void {
