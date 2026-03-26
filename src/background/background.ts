@@ -1,4 +1,5 @@
 import type { Message } from '../types/messages';
+import { YOUTUBE_TIMEDTEXT_PATTERN } from '../constants';
 
 // Background script: intercepts YouTube's own timedtext requests to capture
 // the `pot` (Proof of Origin Token) parameter, which is required to fetch
@@ -18,7 +19,7 @@ browser.webRequest.onBeforeRequest.addListener(
       }
     }
   },
-  { urls: ['https://www.youtube.com/api/timedtext?*'] }
+  { urls: [YOUTUBE_TIMEDTEXT_PATTERN] }
 );
 
 browser.runtime.onMessage.addListener((message: Message) => {
