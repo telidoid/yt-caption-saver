@@ -18,7 +18,7 @@ export function trackDisplayName(track: SubtitleTrack): string {
 export type Message =
   | { type: 'GET_VIDEO_INFO' }
   | { type: 'VIDEO_INFO_RESPONSE'; payload: VideoInfo | null }
-  | { type: 'DOWNLOAD_SUBTITLE'; payload: { baseUrl: string; languageCode: string; format: 'srt' | 'txt' } }
+  | { type: 'DOWNLOAD_SUBTITLE'; payload: { baseUrl: string; languageCode: string; format: 'srt' | 'txt'; title: string } }
   | { type: 'DOWNLOAD_RESULT'; payload: { success: boolean; error?: string } }
   | { type: 'GET_POT' }
   | { type: 'POT_RESPONSE'; payload: { pot: string | null } };

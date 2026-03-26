@@ -81,8 +81,8 @@ browser.runtime.onMessage.addListener((message: Message) => {
         payload: { success: false, error: 'Missing payload' },
       } as Message);
     }
-    const { baseUrl, languageCode, format } = message.payload;
-    return downloadSubtitle(baseUrl, languageCode, format)
+    const { baseUrl, languageCode, format, title } = message.payload;
+    return downloadSubtitle(baseUrl, languageCode, format, title)
       .then((): Message => ({ type: 'DOWNLOAD_RESULT', payload: { success: true } }))
       .catch((err: unknown): Message => {
         const error = err instanceof Error ? err.message : String(err);

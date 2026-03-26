@@ -1,5 +1,5 @@
 import { type SubtitleTrack, trackDisplayName } from '../types/messages';
-import { COLOR_LINK, COLOR_MUTED, COLOR_ERROR, ERROR_DISPLAY_DURATION_MS } from '../constants';
+import { COLOR_LINK, COLOR_MUTED, COLOR_ERROR, ERROR_DISPLAY_DURATION_MS, YOUTUBE_TITLE_SUFFIX } from '../constants';
 import { downloadSubtitle } from './downloader';
 
 export const CONTAINER_ID = 'yt-subtitle-downloader';
@@ -54,7 +54,7 @@ function createFormatSelect(): HTMLSelectElement {
   return select;
 }
 
-function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
+function createTrackLink(track: SubtitleTrack, title: string): HTMLAnchorElement {
   const link = document.createElement('a');
   link.textContent = trackDisplayName(track);
   link.href = '#';
@@ -70,7 +70,7 @@ function createTrackLink(track: SubtitleTrack): HTMLAnchorElement {
     link.style.color = COLOR_MUTED;
     link.textContent = 'Downloading...';
 
-    downloadSubtitle(track.baseUrl, track.languageCode, getSelectedFormat())
+    downloadSubtitle(track.baseUrl, track.languageCode, getSelectedFormat(), title)
       .then(() => {
         link.textContent = trackDisplayName(track);
         link.style.color = COLOR_LINK;
@@ -102,6 +102,9 @@ export function renderInPageUI(tracks: SubtitleTrack[]): void {
     return;
   }
 
+  // Capture title now so downloads use the correct video title even if the page navigates later
+  const title = document.title.replace(YOUTUBE_TITLE_SUFFIX, '');
+
   const container = document.createElement('div');
   container.id = CONTAINER_ID;
   container.style.cssText = CONTAINER_STYLE;
@@ -119,7 +122,7 @@ export function renderInPageUI(tracks: SubtitleTrack[]): void {
   } else {
     container.appendChild(createFormatSelect());
     for (const track of tracks) {
-      container.appendChild(createTrackLink(track));
+      container.appendChild(createTrackLink(track, title));
     }
   }
 

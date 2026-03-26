@@ -53,7 +53,10 @@ async function init(): Promise<void> {
   renderTracks(response.payload);
 }
 
+let videoTitle = '';
+
 function renderTracks(info: VideoInfo): void {
+  videoTitle = info.title;
   statusEl.textContent = `"${info.title}"`;
 
   if (info.availableTracks.length === 0) {
@@ -100,7 +103,7 @@ async function downloadTrack(track: SubtitleTrack): Promise<void> {
 
   const request: Message = {
     type: 'DOWNLOAD_SUBTITLE',
-    payload: { baseUrl: track.baseUrl, languageCode: track.languageCode, format },
+    payload: { baseUrl: track.baseUrl, languageCode: track.languageCode, format, title: videoTitle },
   };
   let response: Message;
   try {

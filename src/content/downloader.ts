@@ -1,6 +1,6 @@
 import type { Message } from '../types/messages';
 import {
-  YOUTUBE_TITLE_SUFFIX, UNSAFE_FILENAME_CHARS, BLOB_CLEANUP_DELAY_MS,
+  UNSAFE_FILENAME_CHARS, BLOB_CLEANUP_DELAY_MS,
   POT_POLL_INTERVAL_MS, POT_POLL_TIMEOUT_MS, WINDOWS_RESERVED_NAMES, MAX_FILENAME_LENGTH,
   YOUTUBE_ALLOWED_ORIGINS,
 } from '../constants';
@@ -10,6 +10,7 @@ export async function downloadSubtitle(
   baseUrl: string,
   languageCode: string,
   format: 'srt' | 'txt',
+  title: string,
 ): Promise<void> {
   let parsedUrl: URL;
   try {
@@ -33,7 +34,6 @@ export async function downloadSubtitle(
   const xml = await response.text();
 
   const content = format === 'srt' ? xmlToSrt(xml) : xmlToTxt(xml);
-  const title = document.title.replace(YOUTUBE_TITLE_SUFFIX, '');
   const safeTitle = sanitizeFilename(title);
 
   saveTextAsFile(content, `${safeTitle}.${languageCode}.${format}`);
