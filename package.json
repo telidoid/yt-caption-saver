@@ -1,5 +1,5 @@
 {
-  "name": "firefox-youtube-subtitle-downloader",
+  "name": "yt-caption-saver",
   "version": "0.1.0",
   "description": "A Firefox extension to download subtitles from YouTube videos",
   "private": true,
@@ -7,7 +7,8 @@
     "build": "node scripts/build.mjs",
     "build:watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "package": "npm run build && cd dist && 7z a -tzip ../yt-caption-saver.xpi ."
   },
   "devDependencies": {
     "@types/firefox-webext-browser": "^120.0.0",
