@@ -6,7 +6,28 @@ import { YOUTUBE_TIMEDTEXT_PATTERN, YOUTUBE_ALLOWED_ORIGINS } from '../constants
 // subtitle content from YouTube's API.
 
 const MAX_POT_ENTRIES = 100;
+const STORAGE_KEY = 'potByTab';
 const potByTab = new Map<number, string>();
+
+// Restore potByTab from storage on wake-up (non-persistent event page)
+const restoreReady = browser.storage.local.get(STORAGE_KEY).then((data) => {
+  const stored = data[STORAGE_KEY];
+  if (stored && typeof stored === 'object') {
+    for (const [key, value] of Object.entries(stored)) {
+      if (typeof value === 'string') {
+        potByTab.set(Number(key), value);
+      }
+    }
+  }
+}).catch(() => { /* storage read failed; start with empty cache */ });
+
+function persistPotCache(): void {
+  const obj: Record<string, string> = {};
+  for (const [key, value] of potByTab) {
+    obj[String(key)] = value;
+  }
+  browser.storage.local.set({ [STORAGE_KEY]: obj });
+}
 
 browser.webRequest.onBeforeRequest.addListener(
   (details) => {
@@ -22,6 +43,7 @@ browser.webRequest.onBeforeRequest.addListener(
           potByTab.delete(oldest);
         }
         potByTab.set(details.tabId, pot);
+        persistPotCache();
       }
     }
   },
@@ -29,26 +51,32 @@ browser.webRequest.onBeforeRequest.addListener(
 );
 
 browser.tabs.onRemoved.addListener((tabId) => {
-  potByTab.delete(tabId);
+  if (potByTab.delete(tabId)) {
+    persistPotCache();
+  }
 });
 
 // Clear stale POT when the user navigates away from the page within the same tab
 browser.webNavigation.onCommitted.addListener((details) => {
   if (details.frameId === 0 && !YOUTUBE_ALLOWED_ORIGINS.some((o) => details.url.startsWith(o))) {
-    potByTab.delete(details.tabId);
+    if (potByTab.delete(details.tabId)) {
+      persistPotCache();
+    }
   }
 });
 
 browser.runtime.onMessage.addListener((message: Message, sender) => {
   if (message.type === 'GET_POT') {
-    // Only respond to requests from YouTube tabs
-    const senderUrl = sender.tab?.url ?? sender.url ?? '';
-    if (!YOUTUBE_ALLOWED_ORIGINS.some((o) => senderUrl.startsWith(o))) {
-      return Promise.resolve({ type: 'POT_RESPONSE', payload: { pot: null } } as Message);
-    }
-    const pot = sender.tab?.id != null ? potByTab.get(sender.tab.id) ?? null : null;
-    const response: Message = { type: 'POT_RESPONSE', payload: { pot } };
-    return Promise.resolve(response);
+    // Wait for storage restoration before responding
+    return restoreReady.then(() => {
+      // Only respond to requests from YouTube tabs
+      const senderUrl = sender.tab?.url ?? sender.url ?? '';
+      if (!YOUTUBE_ALLOWED_ORIGINS.some((o) => senderUrl.startsWith(o))) {
+        return { type: 'POT_RESPONSE', payload: { pot: null } } as Message;
+      }
+      const pot = sender.tab?.id != null ? potByTab.get(sender.tab.id) ?? null : null;
+      return { type: 'POT_RESPONSE', payload: { pot } } as Message;
+    });
   }
   return false;
 });

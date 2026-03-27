@@ -1,6 +1,6 @@
 {
   "name": "yt-caption-saver",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A Firefox extension to download subtitles from YouTube videos",
   "private": true,
   "scripts": {
