@@ -4,12 +4,19 @@ interface TimedCue {
   text: string;
 }
 
-const htmlDecodeEl = document.createElement('textarea');
+const HTML_ENTITIES: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
+  '&apos;': "'", '&#39;': "'", '&nbsp;': '\u00A0',
+};
+const ENTITY_RE = /&(?:#(\d{1,4})|#x([0-9a-fA-F]{1,4})|[a-zA-Z]+);/g;
 
 function decodeHtmlEntities(text: string): string {
   if (!text.includes('&')) return text;
-  htmlDecodeEl.innerHTML = text;
-  return htmlDecodeEl.value;
+  return text.replace(ENTITY_RE, (match, dec, hex) => {
+    if (dec) return String.fromCharCode(parseInt(dec, 10));
+    if (hex) return String.fromCharCode(parseInt(hex, 16));
+    return HTML_ENTITIES[match] ?? match;
+  });
 }
 
 function parseTimedTextXml(xml: string): TimedCue[] {
