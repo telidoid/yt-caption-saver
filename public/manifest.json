@@ -10,7 +10,7 @@
       }
     }
   },
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Save captions from YouTube videos as SRT or plain text. Source: https://github.com/telidoid/yt-caption-saver",
   "icons": {
     "48": "icons/icon-48.png",

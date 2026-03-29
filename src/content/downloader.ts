@@ -6,6 +6,8 @@ import {
 } from '../constants';
 import { xmlToSrt, xmlToTxt } from './converter';
 
+const CC_BUTTON_SELECTOR = '.ytp-subtitles-button';
+
 export async function downloadSubtitle(
   baseUrl: string,
   languageCode: string,
@@ -39,24 +41,56 @@ export async function downloadSubtitle(
   saveTextAsFile(content, `${safeTitle}.${languageCode}.${format}`);
 }
 
-async function fetchPotToken(): Promise<string> {
-  const deadline = Date.now() + POT_POLL_TIMEOUT_MS;
-
-  while (Date.now() < deadline) {
-    try {
-      const request: Message = { type: 'GET_POT' };
-      const response = await browser.runtime.sendMessage(request) as Message | undefined;
-
-      if (response?.type === 'POT_RESPONSE' && response.payload.pot) {
-        return response.payload.pot;
-      }
-    } catch {
-      // sendMessage can throw if background script isn't ready; keep polling
+async function requestPot(): Promise<string | null> {
+  try {
+    const request: Message = { type: 'GET_POT' };
+    const response = await browser.runtime.sendMessage(request) as Message | undefined;
+    if (response?.type === 'POT_RESPONSE' && response.payload.pot) {
+      return response.payload.pot;
     }
+  } catch {
+    // sendMessage can throw if background script isn't ready
+  }
+  return null;
+}
+
+async function pollForPot(): Promise<string | null> {
+  const deadline = Date.now() + POT_POLL_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const pot = await requestPot();
+    if (pot) return pot;
     await new Promise((r) => setTimeout(r, POT_POLL_INTERVAL_MS));
   }
+  return null;
+}
 
-  throw new Error('No POT token available. Please enable subtitles (CC button) and refresh the page.');
+/** Clicks the CC button if captions are off. Returns a restore callback, or null if the button wasn't found. */
+function enableCaptions(): (() => void) | null {
+  const btn = document.querySelector(CC_BUTTON_SELECTOR) as HTMLButtonElement | null;
+  if (!btn) return null;
+  if (btn.getAttribute('aria-pressed') === 'false') {
+    btn.click();
+    return () => btn.click();
+  }
+  return () => {};
+}
+
+async function fetchPotToken(): Promise<string> {
+  const existing = await requestPot();
+  if (existing) return existing;
+
+  const restore = enableCaptions();
+  if (!restore) {
+    throw new Error('No POT token available. Could not find the CC button to enable subtitles automatically.');
+  }
+
+  try {
+    const pot = await pollForPot();
+    if (pot) return pot;
+    throw new Error('No POT token captured after enabling subtitles. Please try refreshing the page.');
+  } finally {
+    restore();
+  }
 }
 
 function sanitizeFilename(title: string): string {
