@@ -1,23 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-  <!-- Background rounded rectangle -->
-  <rect x="4" y="4" width="88" height="88" rx="18" ry="18" fill="#1a1a2e"/>
+  <!-- Background -->
+  <rect width="96" height="96" rx="20" fill="#1a1a2e"/>
 
-  <!-- Subtitle lines (representing text/captions) -->
-  <rect x="18" y="28" width="40" height="5" rx="2.5" fill="#8892b0"/>
-  <rect x="18" y="40" width="52" height="5" rx="2.5" fill="#8892b0"/>
-  <rect x="18" y="52" width="34" height="5" rx="2.5" fill="#8892b0"/>
+  <!-- Speech bubble body -->
+  <rect x="12" y="14" width="72" height="48" rx="8" fill="#3ea6ff"/>
+  <!-- Speech bubble tail -->
+  <polygon points="24,62 36,62 28,74" fill="#3ea6ff"/>
 
-  <!-- Download arrow -->
-  <g transform="translate(66, 38)">
-    <!-- Arrow shaft -->
-    <rect x="5" y="0" width="8" height="22" rx="2" fill="#3ea6ff"/>
-    <!-- Arrow head -->
-    <polygon points="9,34 -2,20 20,20" fill="#3ea6ff"/>
-    <!-- Base line -->
-    <rect x="-2" y="36" width="22" height="4" rx="2" fill="#3ea6ff"/>
-  </g>
+  <!-- Caption lines inside bubble -->
+  <rect x="22" y="26" width="36" height="4" rx="2" fill="#1a1a2e"/>
+  <rect x="22" y="36" width="52" height="4" rx="2" fill="#1a1a2e"/>
+  <rect x="22" y="46" width="28" height="4" rx="2" fill="#1a1a2e"/>
 
   <!-- CC badge -->
-  <rect x="14" y="64" width="32" height="18" rx="4" fill="#3ea6ff"/>
-  <text x="30" y="78" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="13" fill="#1a1a2e" text-anchor="middle">CC</text>
+  <rect x="52" y="68" width="32" height="18" rx="5" fill="#3ea6ff"/>
+  <text x="68" y="81.5" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="13" fill="#1a1a2e" text-anchor="middle">CC</text>
 </svg>
